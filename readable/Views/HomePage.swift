@@ -93,7 +93,7 @@ struct HomePage: View {
     
     var body: some View {
         ZStack {
-            Color.appBackground.ignoresSafeArea()
+            Color.background.ignoresSafeArea()
             
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 32) {
