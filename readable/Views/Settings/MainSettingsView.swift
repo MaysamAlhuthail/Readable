@@ -11,6 +11,7 @@ struct MainSettingsView: View {
     
     @EnvironmentObject var settings: SettingsViewModel
     @State private var selectedTab = 0
+    @State private var goToHome = false
     
     var body: some View {
         ZStack {
@@ -52,13 +53,19 @@ struct MainSettingsView: View {
                 
                 // Bottom button
                 Button {
-                    // Next / Done action
+                    if selectedTab == 0 {
+                        // Go to Colors tab
+                        selectedTab = 1
+                    } else {
+                        // Go to HomePage
+                        goToHome = true
+                    }
                 } label: {
                     Text(selectedTab == 0 ? "Next" : "Done")
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(.background)
                         .frame(width: 95, height: 50)
-                        .background(Color("Dblue"))
+                        .background(Color("dblue")) // make sure asset name matches
                         .cornerRadius(25)
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
@@ -66,12 +73,17 @@ struct MainSettingsView: View {
                 .padding(.bottom, 10)
             }
         }
+        .navigationDestination(isPresented: $goToHome) {
+            HomePage()
+        }
     }
 }
 
 struct MainSettingsView_Previews: PreviewProvider {
     static var previews: some View {
-        MainSettingsView()
-            .environmentObject(SettingsViewModel())
+        NavigationStack {
+            MainSettingsView()
+                .environmentObject(SettingsViewModel())
+        }
     }
 }

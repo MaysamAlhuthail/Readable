@@ -116,6 +116,7 @@ struct HomePage: View {
                 .padding(.bottom, 24)
             }
         }
+        .navigationBarBackButtonHidden(true)
     }
 }
 
