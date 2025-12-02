@@ -9,10 +9,8 @@ import SwiftUI
 struct filesPage: View {
 
     @EnvironmentObject var settingsViewModel: SettingsViewModel
-    @EnvironmentObject var vm: AppViewModel            // <<< add this
     @State private var searchText = ""
     @State private var showAddPopup = false
-    @State private var showScanner = false             // <<< add this
 
     var body: some View {
         ZStack {
@@ -26,6 +24,7 @@ struct filesPage: View {
                     Text("Files")
                         .font(.system(size: 48, weight: .bold))
                         .foregroundColor(Color(hex: "17374F"))
+
 
                     Spacer()
 
@@ -70,32 +69,11 @@ struct filesPage: View {
                 Text("Add New File")
                     .font(.title)
                     .bold()
+         
 
                 Text("Add your options or UI here…")
 
-                // Open scanner when tapped
-                Button(action: {
-                    // close popup and open scanner
-                    showAddPopup = false
-                    // small async delay to allow sheet to dismiss smoothly before presenting the scanner
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                        showScanner = true
-                    }
-                }) {
-                    HStack {
-                        Image(systemName: "camera.fill")
-                        Text("Scan Text")
-                            .bold()
-                    }
-                    .foregroundColor(.white)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color(hex: "17374F"))
-                    .cornerRadius(12)
-                    .padding(.horizontal)
-                }
-
-                Button("Close") {
+                Button("scan text") {
                     showAddPopup = false
                 }
                 .padding()
@@ -103,21 +81,28 @@ struct filesPage: View {
             .padding()
             .presentationDetents([.medium, .large])
         }
-        // Present the scanner full screen (ContentViewCam uses the vm)
-        .fullScreenCover(isPresented: $showScanner) {
-            ContentViewCam()
-                .environmentObject(vm)
-                .ignoresSafeArea()
-        }
     }
 }
-extension Color { init(hex: String) {
-    let scanner = Scanner(string: hex)
-    _ = scanner.scanString("#")
-    var rgb: UInt64 = 0
-    scanner.scanHexInt64(&rgb)
-    let r = Double((rgb >> 16) & 0xFF) / 255
-    let g = Double((rgb >> 8) & 0xFF) / 255
-    let b = Double(rgb & 0xFF) / 255
-    self.init(red: r, green: g, blue: b) }
+
+
+struct filesPage_Previews: PreviewProvider {
+    static var previews: some View {
+        filesPage()
+            .environmentObject(SettingsViewModel())
+    }
+}
+extension Color {
+    init(hex: String) {
+        let scanner = Scanner(string: hex)
+        _ = scanner.scanString("#")
+
+        var rgb: UInt64 = 0
+        scanner.scanHexInt64(&rgb)
+
+        let r = Double((rgb >> 16) & 0xFF) / 255
+        let g = Double((rgb >> 8) & 0xFF) / 255
+        let b = Double(rgb & 0xFF) / 255
+
+        self.init(red: r, green: g, blue: b)
+    }
 }
