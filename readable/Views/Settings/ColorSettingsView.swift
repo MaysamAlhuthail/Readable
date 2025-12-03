@@ -11,8 +11,8 @@ struct ColorSettingsView: View {
     
     @EnvironmentObject var settings: SettingsViewModel
     
-    // All available colors (expand as you like)
-    let backgrounds: [Color] = [
+    // Base colors (the ones you had before)
+    private let baseBackgrounds: [Color] = [
         Color.white,
         Color(red: 0.97, green: 0.95, blue: 0.93),
         Color(red: 0.94, green: 0.90, blue: 0.86),
@@ -23,7 +23,7 @@ struct ColorSettingsView: View {
         Color(red: 0.76, green: 0.72, blue: 0.66)
     ]
     
-    let textColors: [Color] = [
+    private let baseTextColors: [Color] = [
         .black,
         Color(red: 0.37, green: 0.27, blue: 0.17),
         .gray,
@@ -33,6 +33,28 @@ struct ColorSettingsView: View {
         Color(red: 0.15, green: 0.15, blue: 0.20),
         Color(red: 0.55, green: 0.40, blue: 0.35)
     ]
+    
+    // Custom (wheel) colors
+    @State private var customBackgroundColor: Color = .white
+    @State private var customTextColor: Color = .black
+    
+    // Computed arrays that include the custom color as the last item
+    private var backgrounds: [Color] {
+        baseBackgrounds + [customBackgroundColor]
+    }
+    
+    private var textColors: [Color] {
+        baseTextColors + [customTextColor]
+    }
+    
+    // Indices for the custom (wheel) colors
+    private var customBackgroundIndex: Int {
+        backgrounds.count - 1
+    }
+    
+    private var customTextIndex: Int {
+        textColors.count - 1
+    }
     
     private let colorsPerPage = 5
     @State private var bgPage = 0
@@ -68,17 +90,36 @@ struct ColorSettingsView: View {
                     
                     HStack(spacing: 18) {
                         ForEach(backgroundIndicesForCurrentPage(), id: \.self) { i in
-                            Button {
-                                settings.backgroundColorIndex = i
-                            } label: {
-                                Circle()
-                                    .fill(backgrounds[i])
+                            if i == customBackgroundIndex {
+                                // ✅ Custom color wheel circle
+                                ColorPicker("",
+                                            selection: $customBackgroundColor,
+                                            supportsOpacity: false)
+                                    .labelsHidden()
                                     .frame(width: 30, height: 30)
+                                    .clipShape(Circle())
                                     .overlay(
                                         Circle()
                                             .stroke(Color.dblue,
                                                     lineWidth: settings.backgroundColorIndex == i ? 3 : 0)
                                     )
+                                    // Whenever user picks a color, select this circle
+                                    .onChange(of: customBackgroundColor) { _ in
+                                        settings.backgroundColorIndex = customBackgroundIndex
+                                    }
+                            } else {
+                                Button {
+                                    settings.backgroundColorIndex = i
+                                } label: {
+                                    Circle()
+                                        .fill(backgrounds[i])
+                                        .frame(width: 30, height: 30)
+                                        .overlay(
+                                            Circle()
+                                                .stroke(Color.dblue,
+                                                        lineWidth: settings.backgroundColorIndex == i ? 3 : 0)
+                                        )
+                                }
                             }
                         }
                         
@@ -118,17 +159,35 @@ struct ColorSettingsView: View {
                     
                     HStack(spacing: 18) {
                         ForEach(textIndicesForCurrentPage(), id: \.self) { i in
-                            Button {
-                                settings.textColorIndex = i
-                            } label: {
-                                Circle()
-                                    .fill(textColors[i])
+                            if i == customTextIndex {
+                                // ✅ Custom text color wheel circle
+                                ColorPicker("",
+                                            selection: $customTextColor,
+                                            supportsOpacity: false)
+                                    .labelsHidden()
                                     .frame(width: 30, height: 30)
+                                    .clipShape(Circle())
                                     .overlay(
                                         Circle()
                                             .stroke(Color.dblue,
                                                     lineWidth: settings.textColorIndex == i ? 3 : 0)
                                     )
+                                    .onChange(of: customTextColor) { _ in
+                                        settings.textColorIndex = customTextIndex
+                                    }
+                            } else {
+                                Button {
+                                    settings.textColorIndex = i
+                                } label: {
+                                    Circle()
+                                        .fill(textColors[i])
+                                        .frame(width: 30, height: 30)
+                                        .overlay(
+                                            Circle()
+                                                .stroke(Color.dblue,
+                                                        lineWidth: settings.textColorIndex == i ? 3 : 0)
+                                        )
+                                }
                             }
                         }
                         
