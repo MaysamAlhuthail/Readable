@@ -33,7 +33,22 @@ class SettingsViewModel: ObservableObject {
     }
     
     // Fonts used everywhere
-    let fonts = ["Comic Sans MS", "Arial Rounded MT Bold", "Helvetica Neue"]
+    let fonts = [
+        "Helvetica Neue",
+        "Avenir",
+        "Avenir Next",
+        "Avenir Next Demi Bold",
+        "SF Pro Text",
+        "SF Pro Rounded",
+        "Verdana",
+        "Trebuchet MS",
+        "Gill Sans",
+        "Avenir Next Rounded",
+        "Arial Rounded MT Regular",
+        "Georgia",
+        "Times New Roman"
+    ]
+
     
     // MARK: - Keys
     private struct Keys {
@@ -88,11 +103,17 @@ class SettingsViewModel: ObservableObject {
     
     private func applyBionic(to text: String) -> String {
         let words = text.split(separator: " ")
+        
         return words
-            .map {
-                let w = String($0)
-                let cut = max(1, w.count / 2)
-                return "**\(w.prefix(cut))**\(w.dropFirst(cut))"
+            .map { substring -> String in
+                let w = String(substring)
+                guard !w.isEmpty else { return w }
+                
+                // 👈 هنا نخلي بس أول حرف من الكلمة هو اللي بين **
+                let first = w.prefix(1)
+                let rest  = w.dropFirst()
+                
+                return "**\(first)**\(rest)"
             }
             .joined(separator: " ")
     }

@@ -15,14 +15,29 @@ struct TextSettingsView: View {
         VStack {
             // MARK: - White Text Box
             VStack(spacing: 16) {
-                Text(sampleText())
-                    .font(.custom(settings.fonts[settings.fontIndex],
-                                  size: settings.fontSize))
-                    .kerning(settings.wordSpacing)
-                    .lineSpacing(settings.lineSpacing)
-                    .multilineTextAlignment(.center)
-                    .padding()
-                    .animation(.easeInOut, value: settings.fontIndex)
+                
+                // 👇 هنا التعديل الوحيد المهم
+                if settings.isBionic,
+                   let attributed = try? AttributedString(markdown: sampleText()) {
+                    Text(attributed)
+                        .font(.custom(settings.fonts[settings.fontIndex],
+                                      size: settings.fontSize))
+                        .kerning(settings.wordSpacing)
+                        .lineSpacing(settings.lineSpacing)
+                        .multilineTextAlignment(.center)
+                        .padding()
+                        .animation(.easeInOut, value: settings.fontIndex)
+                } else {
+                    Text(sampleText())
+                        .font(.custom(settings.fonts[settings.fontIndex],
+                                      size: settings.fontSize))
+                        .kerning(settings.wordSpacing)
+                        .lineSpacing(settings.lineSpacing)
+                        .multilineTextAlignment(.center)
+                        .padding()
+                        .animation(.easeInOut, value: settings.fontIndex)
+                }
+                // 👆 باقي الإعدادات نفسها ما تغيّرت
                 
                 // MARK: - Font Picker Arrows
                 HStack {
