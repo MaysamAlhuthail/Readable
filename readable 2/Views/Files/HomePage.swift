@@ -81,7 +81,7 @@ final class HomeViewModel: ObservableObject {
 struct HomePage: View {
 
     @StateObject private var viewModel = HomeViewModel()
-
+    @EnvironmentObject var appViewModel: AppViewModel
     var body: some View {
         ZStack {
             Color.appBackground.ignoresSafeArea()
@@ -89,20 +89,23 @@ struct HomePage: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 32) {
 
-                    // UPDATED Search Bar
+                    // Search Bar
                     SearchBar(text: $viewModel.searchText)
                         .padding(.top, 24)
 
+                    // 👇 Make the Files header clickable
                     NavigationLink {
                         filesPage()
+                            .environmentObject(appViewModel)
+                        // now safe
                     } label: {
                         SectionHeader(title: "Files")
                     }
                     .buttonStyle(.plain)
                     HorizontalCardList(items: viewModel.filteredFiles)
 
-//                    SectionHeader(title: "Notes")
-//                    HorizontalCardList(items: viewModel.filteredNotes)
+                    SectionHeader(title: "Notes")
+                    HorizontalCardList(items: viewModel.filteredNotes)
 
                     Spacer(minLength: 20)
                 }
@@ -113,6 +116,7 @@ struct HomePage: View {
         .navigationBarBackButtonHidden(true)
     }
 }
+
 
 // MARK: - UPDATED SEARCH BAR (final)
 struct SearchBar: View {
@@ -158,6 +162,7 @@ struct SectionHeader: View {
 
             Spacer()
         }
+        .contentShape(Rectangle())   // 👈 makes whole row tappable
     }
 }
 

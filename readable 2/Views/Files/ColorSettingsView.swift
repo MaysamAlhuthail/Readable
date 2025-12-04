@@ -64,7 +64,7 @@ struct ColorSettingsView: View {
         VStack {
             // MARK: - Preview
             VStack {
-                Text(.init(sampleText()))   // 👈 أهم شي .init هنا
+                Text(sampleText())
                     .font(.custom(settings.fonts[settings.fontIndex],
                                   size: settings.fontSize))
                     .kerning(settings.wordSpacing)
@@ -72,7 +72,6 @@ struct ColorSettingsView: View {
                     .multilineTextAlignment(.center)
                     .foregroundColor(textColors[safe: settings.textColorIndex] ?? .black)
                     .padding()
-
             }
             .padding()
             .background(backgrounds[safe: settings.backgroundColorIndex] ?? Color.white)
