@@ -105,7 +105,7 @@ struct filesPage: View {
         }
         // Present the scanner full screen (ContentViewCam uses the vm)
         .fullScreenCover(isPresented: $showScanner) {
-            ContentViewCam()
+            ContentViewCam(isPresented: $showScanner)
                 .environmentObject(vm)
                 .ignoresSafeArea()
         }

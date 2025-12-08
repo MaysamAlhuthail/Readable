@@ -11,11 +11,13 @@ import SwiftUI
 struct readable_App: App {
     
     @StateObject var settings = SettingsViewModel()
+    @StateObject var vm = AppViewModel()      
     
     var body: some Scene {
         WindowGroup {
-            MainSettingsView()
+            filesPage()
                 .environmentObject(settings)
+                .environmentObject(vm)
                 .preferredColorScheme(.light)
         }
     }
