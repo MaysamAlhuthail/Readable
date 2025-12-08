@@ -1,37 +1,33 @@
-//
-//  contentViewCam.swift
-//  readable page
-//
-//  Created by Maysam alhuthail on 11/06/1447 AH.
-//
-
 import SwiftUI
 import VisionKit
 
 struct ContentViewCam: View {
-    
+    @Binding var isPresented: Bool
     @EnvironmentObject var vm: AppViewModel
     
     private let textContentTypes: [(title: String, textContentType: DataScannerViewController.TextContentType?)] = [
-        ("All", .none),
-        ("URL", .URL),
-        ("Phone", .telephoneNumber),
-        ("Email", .emailAddress),
-        ("Address", .fullStreetAddress)
+        ("All", .none)
     ]
     
     var body: some View {
-        switch vm.dataScannerAccessStatus {
-        case .scannerAvailable:
-            mainView
-        case .cameraNotAvailable:
-            Text("Your device doesn't have a camera")
-        case .scannerNotAvailable:
-            Text("Your device doesn't have support for scanning barcode with this app")
-        case .cameraAccessNotGranted:
-            Text("Please provide access to the camera in settings")
-        case .notDetermined:
-            Text("Requesting camera access")
+        Group {
+            switch vm.dataScannerAccessStatus {
+            case .scannerAvailable:
+                mainView
+            case .cameraNotAvailable:
+                Text("Your device doesn't have a camera")
+            case .scannerNotAvailable:
+                Text("Your device doesn't have support for scanning barcode with this app")
+            case .cameraAccessNotGranted:
+                Text("Please provide access to the camera in settings")
+            case .notDetermined:
+                Text("Requesting camera access")
+            }
+        }
+        .onAppear {
+            Task {
+                await vm.requestDataScannerAccessStatus()
+            }
         }
     }
     
@@ -39,7 +35,8 @@ struct ContentViewCam: View {
         DataScannerView(
             recognizedItems: $vm.recognizedItems,
             recognizedDataType: vm.recognizedDataType,
-            recognizesMultipleItems: vm.recognizesMultipleItems)
+            recognizesMultipleItems: vm.recognizesMultipleItems
+        )
         .background { Color.gray.opacity(0.3) }
         .ignoresSafeArea()
         .id(vm.dataScannerViewId)
@@ -74,26 +71,32 @@ struct ContentViewCam: View {
                 Picker("Scan Type", selection: $vm.scanType) {
                     Text("Barcode").tag(ScanType.barcode)
                     Text("Text").tag(ScanType.text)
-                }.pickerStyle(.segmented)
+                }
+                .pickerStyle(.segmented)
                 
                 Toggle("Scan multiple", isOn: $vm.recognizesMultipleItems)
-            }.padding(.top)
+            }
+            .padding(.top)
             
             if vm.scanType == .text {
                 Picker("Text content type", selection: $vm.textContentType) {
                     ForEach(textContentTypes, id: \.self.textContentType) { option in
                         Text(option.title).tag(option.textContentType)
                     }
-                }.pickerStyle(.segmented)
+                }
+                .pickerStyle(.segmented)
             }
             
-            Text(vm.headerText).padding(.top)
-        }.padding(.horizontal)
+            Text(vm.headerText)
+                .padding(.top)
+        }
+        .padding(.horizontal)
     }
     
     private var bottomContainerView: some View {
         VStack {
             headerView
+            
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 16) {
                     ForEach(vm.recognizedItems) { item in
@@ -110,6 +113,28 @@ struct ContentViewCam: View {
                     }
                 }
                 .padding()
+            }
+
+            // 👇 NEW: Save button at the bottom
+            if !vm.recognizedText.isEmpty {
+                Button {
+                    vm.saveRecognizedTextToFile()
+                    
+                    // Close scanner after saving
+                    if vm.lastSaveError == nil {
+                        isPresented = false
+                    }
+                } label: {
+                    Text("Save scanned text to file")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                        .padding(.horizontal)
+                        .padding(.bottom, 8)
+                }
             }
         }
     }

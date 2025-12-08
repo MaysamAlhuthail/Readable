@@ -31,10 +31,52 @@ final class AppViewModel: ObservableObject {
     @Published var scanType: ScanType = .barcode
     @Published var textContentType: DataScannerViewController.TextContentType?
     @Published var recognizesMultipleItems = true
-    
+
+    // Optional: so UI can react after saving
+    @Published var lastSavedFileURL: URL?
+    @Published var lastSaveError: String?
+
     var recognizedDataType: DataScannerViewController.RecognizedDataType {
         scanType == .barcode ? .barcode() : .text(textContentType: textContentType)
     }
+
+    // 👇 NEW: combine all recognized text into one string
+    var recognizedText: String {
+        recognizedItems.compactMap { item in
+            if case .text(let text) = item {
+                return text.transcript
+            } else {
+                return nil
+            }
+        }
+        .joined(separator: "\n")
+    }
+
+    // 👇 NEW: save the recognized text into a .txt file in Documents folder
+    func saveRecognizedTextToFile(fileName: String? = nil) {
+        let textToSave = recognizedText
+        guard !textToSave.isEmpty else {
+            lastSaveError = "There is no text to save."
+            return
+        }
+
+        let baseName = (fileName?.isEmpty == false ? fileName! : "Scan-\(Date().timeIntervalSince1970)")
+        let finalFileName = baseName + ".txt"
+
+        let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let fileURL = documentsURL.appendingPathComponent(finalFileName)
+
+        do {
+            try textToSave.write(to: fileURL, atomically: true, encoding: .utf8)
+            lastSavedFileURL = fileURL
+            lastSaveError = nil
+            print("✅ Saved scanned text to: \(fileURL)")
+        } catch {
+            lastSaveError = error.localizedDescription
+            print("❌ Failed to save file: \(error)")
+        }
+    }
+
     
     var headerText: String {
         if recognizedItems.isEmpty {
