@@ -16,7 +16,6 @@ struct TextSettingsView: View {
             // MARK: - White Text Box
             VStack(spacing: 16) {
                 
-                // 👇 هنا التعديل الوحيد المهم
                 if settings.isBionic,
                    let attributed = try? AttributedString(markdown: sampleText()) {
                     Text(attributed)

@@ -1,4 +1,4 @@
-[11/06/1447 AH, 10:00:36 PM] ~ G: // MARK: - Note.swift (MODEL)
+// MARK: - Note.swift (MODEL)
 
 import Foundation
 
@@ -13,7 +13,7 @@ struct Note: Identifiable, Hashable {
         self.content = content
     }
 }
-[11/06/1447 AH, 10:00:45 PM] ~ G: // MARK: - NotesViewModel.swift (VIEW MODEL)
+// MARK: - NotesViewModel.swift (VIEW MODEL)
 
 import Foundation
 import Combine
@@ -63,7 +63,7 @@ class NotesViewModel: ObservableObject {
         }
     }
 }
-[11/06/1447 AH, 10:00:55 PM] ~ G: // MARK: - NotesView.swift (VIEW - NOTES LIST)
+// MARK: - NotesView.swift (VIEW - NOTES LIST)
 
 import SwiftUI
 
@@ -243,7 +243,7 @@ enum PendingNameAction {
         }
     }
 }
-[11/06/1447 AH, 10:01:09 PM] ~ G: // MARK: - NoteDetailView.swift (VIEW - NOTE DETAIL)
+ // MARK: - NoteDetailView.swift (VIEW - NOTE DETAIL)
 
 import SwiftUI
 
@@ -313,4 +313,3 @@ struct NoteDetailView: View {
         )
     )
 }
-[11/06/1447 AH, 10:01:25 PM] ~ G: هذا الكود حقي

@@ -101,8 +101,13 @@ struct HomePage: View {
                     .buttonStyle(.plain)
                     HorizontalCardList(items: viewModel.filteredFiles)
 
-//                    SectionHeader(title: "Notes")
-//                    HorizontalCardList(items: viewModel.filteredNotes)
+                    NavigationLink{
+                                            NotesView()}
+                                        label:{
+                                            SectionHeader(title: "Notes")
+                                        } .buttonStyle(.plain)
+                    HorizontalCardList(items: viewModel.filteredNotes)
+
 
                     Spacer(minLength: 20)
                 }
