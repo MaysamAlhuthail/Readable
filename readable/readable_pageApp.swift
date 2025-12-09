@@ -8,15 +8,20 @@
 import SwiftUI
 
 @main
-struct YourAppNameApp: App {
+struct readable_App: App {
+    
     @StateObject var settings = SettingsViewModel()
-
+    @StateObject var vm = AppViewModel()
+    
     var body: some Scene {
         WindowGroup {
             NavigationStack {
-                SplashView()
+                //
+                SplashView()}
+                    .environmentObject(settings)
+                    .environmentObject(vm)
+                    .preferredColorScheme(.light)
             }
-            .environmentObject(settings)
         }
     }
-}
+

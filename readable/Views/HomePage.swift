@@ -64,7 +64,7 @@ final class HomeViewModel: ObservableObject {
 struct HomePage: View {
 
     @StateObject private var viewModel = HomeViewModel()
-
+    @EnvironmentObject var vm: AppViewModel
     var body: some View {
         ZStack {
             Color.appBackground.ignoresSafeArea()
@@ -78,6 +78,7 @@ struct HomePage: View {
 
                     NavigationLink {
                         filesPage()
+                            
                     } label: {
                         SectionHeader(title: "Files")
                     }

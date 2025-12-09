@@ -26,6 +26,7 @@ enum DataScannerAccessStatusType {
 @MainActor
 final class AppViewModel: ObservableObject {
     
+    @Published var shouldRefreshFiles = false
     @Published var dataScannerAccessStatus: DataScannerAccessStatusType = .notDetermined
     @Published var recognizedItems: [RecognizedItem] = []
     @Published var scanType: ScanType = .barcode
@@ -40,7 +41,7 @@ final class AppViewModel: ObservableObject {
         scanType == .barcode ? .barcode() : .text(textContentType: textContentType)
     }
 
-    // 👇 NEW: combine all recognized text into one string
+    // Combine all recognized text into one string
     var recognizedText: String {
         recognizedItems.compactMap { item in
             if case .text(let text) = item {
@@ -52,7 +53,38 @@ final class AppViewModel: ObservableObject {
         .joined(separator: "\n")
     }
 
-    // 👇 NEW: save the recognized text into a .txt file in Documents folder
+    // ✅ NEW: Extract first three words from text
+    private func getFirstThreeWords(from text: String) -> String {
+        // Clean the text: remove extra whitespace and newlines
+        let cleanedText = text
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+        
+        // Get first 3 words
+        let firstThreeWords = cleanedText.prefix(3).joined(separator: " ")
+        
+        // If we have words, return them, otherwise return a default
+        if firstThreeWords.isEmpty {
+            return "Untitled"
+        }
+        
+        // Clean the string to make it safe for filename (remove special characters)
+        let safeFileName = firstThreeWords
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: "\\", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+            .replacingOccurrences(of: "*", with: "-")
+            .replacingOccurrences(of: "?", with: "-")
+            .replacingOccurrences(of: "\"", with: "-")
+            .replacingOccurrences(of: "<", with: "-")
+            .replacingOccurrences(of: ">", with: "-")
+            .replacingOccurrences(of: "|", with: "-")
+        
+        return safeFileName
+    }
+
+    // ✅ UPDATED: save with automatic naming based on content
     func saveRecognizedTextToFile(fileName: String? = nil) {
         let textToSave = recognizedText
         guard !textToSave.isEmpty else {
@@ -60,17 +92,35 @@ final class AppViewModel: ObservableObject {
             return
         }
 
-        let baseName = (fileName?.isEmpty == false ? fileName! : "Scan-\(Date().timeIntervalSince1970)")
+        // Use provided name, or generate from first 3 words, or use timestamp
+        let baseName: String
+        if let fileName = fileName, !fileName.isEmpty {
+            baseName = fileName
+        } else {
+            // Generate name from first 3 words
+            let autoName = getFirstThreeWords(from: textToSave)
+            baseName = autoName
+        }
+        
         let finalFileName = baseName + ".txt"
 
         let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         let fileURL = documentsURL.appendingPathComponent(finalFileName)
+        
+        // If file already exists, add a number
+        var uniqueFileURL = fileURL
+        var counter = 1
+        while FileManager.default.fileExists(atPath: uniqueFileURL.path) {
+            let nameWithCounter = baseName + " \(counter)"
+            uniqueFileURL = documentsURL.appendingPathComponent(nameWithCounter + ".txt")
+            counter += 1
+        }
 
         do {
-            try textToSave.write(to: fileURL, atomically: true, encoding: .utf8)
-            lastSavedFileURL = fileURL
+            try textToSave.write(to: uniqueFileURL, atomically: true, encoding: .utf8)
+            lastSavedFileURL = uniqueFileURL
             lastSaveError = nil
-            print("✅ Saved scanned text to: \(fileURL)")
+            print("✅ Saved scanned text to: \(uniqueFileURL)")
         } catch {
             lastSaveError = error.localizedDescription
             print("❌ Failed to save file: \(error)")
