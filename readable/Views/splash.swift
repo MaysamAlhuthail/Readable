@@ -9,7 +9,7 @@ import SwiftUI
 
 struct SplashView: View {
     @State private var goToSettings = false
-
+    @Binding var isSheet: Bool
     var body: some View {
         ZStack {
             // Background color (light beige)
@@ -52,18 +52,18 @@ struct SplashView: View {
             }
         }
         .navigationDestination(isPresented: $goToSettings) {
-            MainSettingsView()
+            MainSettingsView( isSheet: $isSheet)
                 // Remove this environmentObject(...) if you already provided it in the App file
                 .environmentObject(SettingsViewModel())
         }
     }
 }
 
-struct SplashView_Previews: PreviewProvider {
-    static var previews: some View {
-        NavigationStack {
-            SplashView()
-                .environmentObject(SettingsViewModel())
-        }
-    }
-}
+//struct SplashView_Previews: PreviewProvider {
+//    static var previews: some View {
+//        NavigationStack {
+//            SplashView()
+//                .environmentObject(SettingsViewModel())
+//        }
+//    }
+//}

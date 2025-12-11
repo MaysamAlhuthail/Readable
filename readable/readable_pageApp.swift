@@ -12,16 +12,17 @@ struct readable_App: App {
     
     @StateObject var settings = SettingsViewModel()
     @StateObject var vm = AppViewModel()
+    @State private var isSheet = false
     
     var body: some Scene {
         WindowGroup {
             NavigationStack {
                 //
-                SplashView()}
-                    .environmentObject(settings)
-                    .environmentObject(vm)
-                    .preferredColorScheme(.light)
+                SplashView(isSheet: $isSheet)
             }
+            .environmentObject(settings)
+            .environmentObject(vm)
+            .preferredColorScheme(.light)
         }
     }
-
+}

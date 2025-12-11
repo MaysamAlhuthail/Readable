@@ -452,6 +452,8 @@ struct FileDetailView: View {
     @State private var isLoading: Bool = true
     @State private var errorMessage: String?
     @EnvironmentObject var settings: SettingsViewModel
+    @State private var showSettings = false
+   @State private var isSheet = false
     
     private let backgrounds: [Color] = [
         Color.white,
@@ -531,6 +533,25 @@ struct FileDetailView: View {
         }
         .navigationTitle(fileURL.lastPathComponent)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+                         ToolbarItem(placement: .navigationBarTrailing) {
+                             Button(action: {
+                                 isSheet = true
+                                 showSettings = true
+                             }) {
+                                 Image(systemName: "gearshape.fill")
+                                     .foregroundColor(Color.appNavy)
+                             }
+                         }
+                     }
+                     .sheet(isPresented: $showSettings) {
+                         NavigationStack {
+                             MainSettingsView(isSheet: $isSheet)
+                                 .environmentObject(settings)
+                                     .foregroundColor(Color.appNavy)
+                                 
+                         }
+                     }
         .onAppear {
             loadFileContent()
         }

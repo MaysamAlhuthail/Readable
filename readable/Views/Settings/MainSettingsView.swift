@@ -12,6 +12,8 @@ struct MainSettingsView: View {
     @EnvironmentObject var settings: SettingsViewModel
     @State private var selectedTab = 0
     @State private var goToHome = false
+    @Environment(\.dismiss) private var dismiss
+    @Binding var isSheet: Bool
 
     var body: some View {
         ZStack {
@@ -54,14 +56,17 @@ struct MainSettingsView: View {
 
                 // Bottom button
                 Button {
-                    if selectedTab == 0 {
-                        // Go to Colors tab
-                        selectedTab = 1
-                    } else {
-                        // Go to HomePage
-                        goToHome = true
-                    }
-                } label: {
+                                    if selectedTab == 0 {
+                                        // Go to Colors tab
+                                        selectedTab = 1
+                                    } else {
+                                        // Go to HomePage
+                                        if isSheet == false {
+                                            goToHome = true
+                                        }
+                                        else{ dismiss()}
+                                    }
+                                } label: {
                     Text(selectedTab == 0 ? "Next" : "Done")
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(.white)
@@ -80,11 +85,11 @@ struct MainSettingsView: View {
     }
 }
 
-struct MainSettingsView_Previews: PreviewProvider {
-    static var previews: some View {
-        NavigationStack {
-            MainSettingsView()
-                .environmentObject(SettingsViewModel())
-        }
-    }
-}
+//struct MainSettingsView_Previews: PreviewProvider {
+//    static var previews: some View {
+//        NavigationStack {
+//            MainSettingsView()
+//                .environmentObject(SettingsViewModel())
+//        }
+//    }
+//}
