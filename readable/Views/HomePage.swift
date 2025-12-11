@@ -17,36 +17,121 @@ extension Color {
 // MARK: - MODEL
 struct DocumentItem: Identifiable {
     let id = UUID()
+    let fileURL: URL
     let title: String
     let snippet: String
     let isNote: Bool
+    let lastOpened: Date
 }
 
 // MARK: - VIEW MODEL
 final class HomeViewModel: ObservableObject {
     @Published var searchText: String = ""
-
     @Published private(set) var files: [DocumentItem] = []
     @Published private(set) var notes: [DocumentItem] = []
 
     init() {
-        let fileSnippet =
-        "When I wake up, the other side of the bed is cold. My fingers stretch out, seeking Prim's warmth..."
-
-        let noteSnippet =
-        "Groceries, school assignments, and meetings. Water plants, Clean Bedroom, Laundry..."
-
-        files = [
-            DocumentItem(title: "The Hunger Games", snippet: fileSnippet, isNote: false),
-            DocumentItem(title: "Harry Potter", snippet: fileSnippet, isNote: false),
-            DocumentItem(title: "The Great Gatsby", snippet: fileSnippet, isNote: false)
-        ]
-
+        loadRecentFiles()
+        loadRecentNotes()
+    }
+    
+    func loadRecentFiles() {
+        let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        
+        do {
+            let fileURLs = try FileManager.default.contentsOfDirectory(
+                at: folder,
+                includingPropertiesForKeys: [.creationDateKey],
+                options: []
+            ).filter { $0.pathExtension == "txt" }
+            
+            // Get recently opened files from UserDefaults
+            let recentlyOpened = getRecentlyOpenedFiles()
+            
+            // Create document items with last opened dates
+            var documentItems: [DocumentItem] = []
+            
+            for fileURL in fileURLs {
+                let title = fileURL.deletingPathExtension().lastPathComponent
+                let content = (try? String(contentsOf: fileURL, encoding: .utf8)) ?? ""
+                let snippet = String(content.prefix(100))
+                
+                // Get last opened date or use a very old date if never opened
+                let lastOpened = recentlyOpened[fileURL.path] ?? Date(timeIntervalSince1970: 0)
+                
+                let item = DocumentItem(
+                    fileURL: fileURL,
+                    title: title,
+                    snippet: snippet,
+                    isNote: false,
+                    lastOpened: lastOpened
+                )
+                
+                documentItems.append(item)
+            }
+            
+            // Sort by last opened (most recent first) and take top 3
+            files = documentItems
+                .sorted { $0.lastOpened > $1.lastOpened }
+                .prefix(3)
+                .map { $0 }
+            
+        } catch {
+            print("Error loading files: \(error)")
+            files = []
+        }
+    }
+    
+    func loadRecentNotes() {
+        // For now, keeping the sample notes
+        // You can implement similar logic for notes later
+        let noteSnippet = "Groceries, school assignments, and meetings. Water plants, Clean Bedroom, Laundry..."
+        
         notes = [
-            DocumentItem(title: "Oct to do list", snippet: noteSnippet, isNote: true),
-            DocumentItem(title: "Nov to do list", snippet: noteSnippet, isNote: true),
-            DocumentItem(title: "Dec to do list", snippet: noteSnippet, isNote: true)
+            DocumentItem(
+                fileURL: URL(fileURLWithPath: ""),
+                title: "Oct to do list",
+                snippet: noteSnippet,
+                isNote: true,
+                lastOpened: Date()
+            ),
+            DocumentItem(
+                fileURL: URL(fileURLWithPath: ""),
+                title: "Nov to do list",
+                snippet: noteSnippet,
+                isNote: true,
+                lastOpened: Date()
+            ),
+            DocumentItem(
+                fileURL: URL(fileURLWithPath: ""),
+                title: "Dec to do list",
+                snippet: noteSnippet,
+                isNote: true,
+                lastOpened: Date()
+            )
         ]
+    }
+    
+    // Helper function to get recently opened files from UserDefaults
+    private func getRecentlyOpenedFiles() -> [String: Date] {
+        guard let data = UserDefaults.standard.data(forKey: "recentlyOpenedFiles"),
+              let dict = try? JSONDecoder().decode([String: TimeInterval].self, from: data) else {
+            return [:]
+        }
+        
+        return dict.mapValues { Date(timeIntervalSince1970: $0) }
+    }
+    
+    // Function to mark a file as opened (call this when user opens a file)
+    static func markFileAsOpened(_ fileURL: URL) {
+        var recentFiles = UserDefaults.standard.data(forKey: "recentlyOpenedFiles")
+            .flatMap { try? JSONDecoder().decode([String: TimeInterval].self, from: $0) } ?? [:]
+        
+        recentFiles[fileURL.path] = Date().timeIntervalSince1970
+        
+        if let encoded = try? JSONEncoder().encode(recentFiles) {
+            UserDefaults.standard.set(encoded, forKey: "recentlyOpenedFiles")
+        }
     }
 
     var filteredFiles: [DocumentItem] {
@@ -64,7 +149,7 @@ final class HomeViewModel: ObservableObject {
 struct HomePage: View {
 
     @StateObject private var viewModel = HomeViewModel()
-    @EnvironmentObject var vm: AppViewModel
+
     var body: some View {
         ZStack {
             Color.appBackground.ignoresSafeArea()
@@ -72,13 +157,11 @@ struct HomePage: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 32) {
 
-                    // UPDATED Search Bar
                     SearchBar(text: $viewModel.searchText)
                         .padding(.top, 24)
 
                     NavigationLink {
                         filesPage()
-                            
                     } label: {
                         SectionHeader(title: "Files")
                     }
@@ -86,12 +169,12 @@ struct HomePage: View {
                     HorizontalCardList(items: viewModel.filteredFiles)
 
                     NavigationLink{
-                                            NotesView()}
-                                        label:{
-                                            SectionHeader(title: "Notes")
-                                        } .buttonStyle(.plain)
-                    HorizontalCardList(items: viewModel.filteredNotes)
+                        NotesView()}
+                    label:{
+                        SectionHeader(title: "Notes")
+                    } .buttonStyle(.plain)
 
+                    HorizontalCardList(items: viewModel.filteredNotes)
 
                     Spacer(minLength: 20)
                 }
@@ -100,10 +183,14 @@ struct HomePage: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .onAppear {
+            // Refresh files when view appears
+            viewModel.loadRecentFiles()
+        }
     }
 }
 
-// MARK: - UPDATED SEARCH BAR (final)
+// MARK: - Search Bar
 struct SearchBar: View {
     @Binding var text: String
     
@@ -112,11 +199,11 @@ struct SearchBar: View {
 
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 20))
-                .foregroundColor(Color("Gray")) // icon color
+                .foregroundColor(Color("Gray"))
 
             TextField("Search", text: $text)
                 .textFieldStyle(.plain)
-                .foregroundColor(Color("Gray")) // text color
+                .foregroundColor(Color("Gray"))
                 .font(.system(size: 20, weight: .medium))
 
             Spacer()
@@ -126,7 +213,7 @@ struct SearchBar: View {
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(Color(hex: "767680").opacity(0.12)) // darker bar, 12% opacity
+                .fill(Color(hex: "767680").opacity(0.12))
         )
     }
 }
@@ -158,9 +245,24 @@ struct HorizontalCardList: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 20) {
                 ForEach(items) { item in
-                    FileCard(title: item.title,
-                             snippet: item.snippet,
-                             isNote: item.isNote)
+                    if item.isNote {
+                        FileCard(
+                            title: item.title,
+                            snippet: item.snippet,
+                            isNote: item.isNote
+                        )
+                    } else {
+                        NavigationLink(destination:
+                            FileDetailViewFromHome(fileURL: item.fileURL)
+                        ) {
+                            FileCard(
+                                title: item.title,
+                                snippet: item.snippet,
+                                isNote: item.isNote
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
         }
@@ -229,6 +331,128 @@ struct FileCard: View {
                 .padding(.top, 5)
         }
         .frame(width: cardWidth, height: cardHeight)
+    }
+}
+
+// MARK: - File Detail View (from HomePage - marks file as opened)
+struct FileDetailViewFromHome: View {
+    let fileURL: URL
+    @State private var content: String = ""
+    @State private var isLoading: Bool = true
+    @State private var errorMessage: String?
+    @EnvironmentObject var settings: SettingsViewModel
+    
+    private let backgrounds: [Color] = [
+        Color.white,
+        Color(red: 0.97, green: 0.95, blue: 0.93),
+        Color(red: 0.94, green: 0.90, blue: 0.86),
+        Color(red: 0.90, green: 0.86, blue: 0.82),
+        Color(red: 0.86, green: 0.82, blue: 0.78),
+        Color(red: 0.82, green: 0.78, blue: 0.72),
+        Color(red: 0.80, green: 0.76, blue: 0.70),
+        Color(red: 0.76, green: 0.72, blue: 0.66)
+    ]
+    
+    private let textColors: [Color] = [
+        .black,
+        Color(red: 0.37, green: 0.27, blue: 0.17),
+        .gray,
+        Color(red: 0.45, green: 0.36, blue: 0.29),
+        Color(red: 0.60, green: 0.50, blue: 0.43),
+        Color(red: 0.25, green: 0.20, blue: 0.15),
+        Color(red: 0.15, green: 0.15, blue: 0.20),
+        Color(red: 0.55, green: 0.40, blue: 0.35)
+    ]
+    
+    var body: some View {
+        ZStack {
+            (backgrounds[safe: settings.backgroundColorIndex] ?? Color.white)
+                .ignoresSafeArea()
+            
+            if isLoading {
+                ProgressView("Loading file...")
+            } else if let error = errorMessage {
+                VStack(spacing: 20) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 50))
+                        .foregroundColor(.red)
+                    Text("Error Loading File")
+                        .font(.headline)
+                    Text(error)
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                        .padding()
+                }
+                .padding()
+            } else if content.isEmpty {
+                VStack(spacing: 20) {
+                    Image(systemName: "doc.text")
+                        .font(.system(size: 50))
+                        .foregroundColor(.gray)
+                    Text("File is empty")
+                        .font(.headline)
+                        .foregroundColor(.gray)
+                }
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        if settings.isBionic,
+                           let attributed = try? AttributedString(markdown: settings.formatted(content)) {
+                            Text(attributed)
+                                .font(.custom(settings.fonts[settings.fontIndex], size: settings.fontSize))
+                                .kerning(settings.wordSpacing)
+                                .lineSpacing(settings.lineSpacing)
+                                .foregroundColor(textColors[safe: settings.textColorIndex] ?? .black)
+                                .multilineTextAlignment(.leading)
+                        } else {
+                            Text(content)
+                                .font(.custom(settings.fonts[settings.fontIndex], size: settings.fontSize))
+                                .kerning(settings.wordSpacing)
+                                .lineSpacing(settings.lineSpacing)
+                                .foregroundColor(textColors[safe: settings.textColorIndex] ?? .black)
+                                .multilineTextAlignment(.leading)
+                        }
+                    }
+                    .padding()
+                }
+            }
+        }
+        .navigationTitle(fileURL.lastPathComponent)
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            loadFileContent()
+            // Mark this file as recently opened
+            HomeViewModel.markFileAsOpened(fileURL)
+        }
+    }
+    
+    func loadFileContent() {
+        isLoading = true
+        errorMessage = nil
+        
+        let fileExists = FileManager.default.fileExists(atPath: fileURL.path)
+        
+        if !fileExists {
+            errorMessage = "File does not exist"
+            isLoading = false
+            return
+        }
+        
+        do {
+            content = try String(contentsOf: fileURL, encoding: .utf8)
+            isLoading = false
+        } catch {
+            errorMessage = error.localizedDescription
+            isLoading = false
+        }
+    }
+}
+
+// Safe array indexing
+private extension Array {
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
     }
 }
 

@@ -16,6 +16,17 @@ struct filesPage: View {
     @State private var showScanner = false
     @State private var selectedFile: URL? = nil
     @State private var navigateToFile = false
+    
+    // For rename functionality
+    @State private var showRenameAlert = false
+    @State private var fileToRename: URL?
+    @State private var newFileName = ""
+    
+    // Grid layout
+    private let columns = [
+        GridItem(.flexible(), spacing: 20),
+        GridItem(.flexible(), spacing: 20)
+    ]
 
     var body: some View {
         ZStack {
@@ -64,38 +75,28 @@ struct filesPage: View {
                 .cornerRadius(15)
                 .padding(.horizontal)
 
-                Spacer()
-                
+                // Grid of File Cards
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 10) {
+                    LazyVGrid(columns: columns, spacing: 20) {
                         ForEach(filteredFiles, id: \.self) { file in
-                            Button(action: {
-                                selectedFile = file
-                                navigateToFile = true
-                            }) {
-                                HStack {
-                                    Image(systemName: "doc.text")
-                                        .foregroundColor(Color(hex: "17374F"))
-                                        .font(.system(size: 24))
-                                    
-                                    Text(file.lastPathComponent)
-                                        .foregroundColor(.primary)
-                                        .font(.system(size: 18))
-
-                                    Spacer()
-                                    
-                                    Image(systemName: "chevron.right")
-                                        .foregroundColor(.gray)
-                                        .font(.system(size: 14))
+                            FileCardView(
+                                fileURL: file,
+                                onTap: {
+                                    selectedFile = file
+                                    navigateToFile = true
+                                },
+                                onRename: {
+                                    fileToRename = file
+                                    newFileName = file.deletingPathExtension().lastPathComponent
+                                    showRenameAlert = true
+                                },
+                                onDelete: {
+                                    deleteFile(file)
                                 }
-                                .padding()
-                                .background(Color(.systemGray6))
-                                .cornerRadius(12)
-                                .padding(.horizontal)
-                            }
-                            .buttonStyle(FileButtonStyle())
+                            )
                         }
                     }
+                    .padding(.horizontal)
                 }
                 .navigationDestination(isPresented: $navigateToFile) {
                     if let file = selectedFile {
@@ -113,6 +114,24 @@ struct filesPage: View {
                 }
             }
         }
+        // Rename Alert
+        .alert("Rename File", isPresented: $showRenameAlert) {
+            TextField("File name", text: $newFileName)
+            Button("Cancel", role: .cancel) {
+                fileToRename = nil
+                newFileName = ""
+            }
+            Button("Rename") {
+                if let file = fileToRename {
+                    renameFile(file, to: newFileName)
+                }
+                fileToRename = nil
+                newFileName = ""
+            }
+        } message: {
+            Text("Enter a new name for this file.")
+        }
+        // Pop-up
         .sheet(isPresented: $showAddPopup) {
             VStack(spacing: 20) {
                 Text("Add New File")
@@ -168,16 +187,265 @@ struct filesPage: View {
     func loadTextFiles() -> [URL] {
         let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         do {
-            let files = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
-            return files.filter { $0.pathExtension == "txt" }
+            let files = try FileManager.default.contentsOfDirectory(
+                at: folder,
+                includingPropertiesForKeys: [.creationDateKey],
+                options: []
+            )
+            
+            // Filter for .txt files and sort by creation date (newest first)
+            return files
+                .filter { $0.pathExtension == "txt" }
+                .sorted { file1, file2 in
+                    guard let date1 = try? file1.resourceValues(forKeys: [.creationDateKey]).creationDate,
+                          let date2 = try? file2.resourceValues(forKeys: [.creationDateKey]).creationDate else {
+                        return false
+                    }
+                    return date1 > date2 // Newest first
+                }
         } catch {
             print("Error loading files: \(error)")
             return []
         }
     }
+    
+    func renameFile(_ file: URL, to newName: String) {
+        let folder = file.deletingLastPathComponent()
+        let newURL = folder.appendingPathComponent(newName + ".txt")
+        
+        do {
+            try FileManager.default.moveItem(at: file, to: newURL)
+            files = loadTextFiles()
+            print("✅ Renamed file to: \(newName)")
+        } catch {
+            print("❌ Failed to rename file: \(error)")
+        }
+    }
+    
+    func deleteFile(_ file: URL) {
+        do {
+            try FileManager.default.removeItem(at: file)
+            files = loadTextFiles()
+            print("✅ Deleted file: \(file.lastPathComponent)")
+        } catch {
+            print("❌ Failed to delete file: \(error)")
+        }
+    }
 }
 
-// ✅ UPDATED FileDetailView with Settings Applied
+// MARK: - File Card View
+struct FileCardView: View {
+    let fileURL: URL
+    let onTap: () -> Void
+    let onRename: () -> Void
+    let onDelete: () -> Void
+    
+    @State private var content: String = ""
+    @State private var cardColor: Color = Color(hex: "6C93A3") // Default blue
+    @State private var showColorPicker = false
+    
+    private let cardWidth: CGFloat = 160
+    private let cardHeight: CGFloat = 220
+    
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            // Outer colored border/background
+            RoundedRectangle(cornerRadius: 24)
+                .fill(cardColor)
+                .frame(width: cardWidth, height: cardHeight)
+            
+            // Inner white content area
+            VStack(spacing: 0) {
+                // White content area
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(Color.white)
+                    .overlay(
+                        VStack(alignment: .leading, spacing: 8) {
+                            // File icon
+                            Image(systemName: "doc.text")
+                                .font(.system(size: 28))
+                                .foregroundColor(Color(hex: "17374F"))
+                            
+                            // Preview text
+                            Text(content.isEmpty ? "Loading..." : content)
+                                .font(.system(size: 10))
+                                .foregroundColor(Color.gray.opacity(0.8))
+                                .lineLimit(6)
+                                .multilineTextAlignment(.leading)
+                        }
+                        .padding(12)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    )
+                    .padding(.horizontal, 7)
+                    .padding(.top, 7)
+                    .padding(.bottom, 37)
+                
+                Spacer()
+            }
+            .frame(width: cardWidth, height: cardHeight)
+            
+            // Bottom title bar
+            VStack {
+                Spacer()
+                ZStack {
+                    Rectangle()
+                        .fill(cardColor)
+                        .frame(height: 30)
+                    
+                    Text(fileURL.deletingPathExtension().lastPathComponent)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(Color(hex: "17374F"))
+                        .lineLimit(1)
+                        .padding(.horizontal, 8)
+                }
+                .padding(.horizontal, 7)
+                .padding(.bottom, 7)
+            }
+            .frame(width: cardWidth, height: cardHeight)
+        }
+        .frame(width: cardWidth, height: cardHeight)
+        .onTapGesture {
+            // Mark file as recently opened
+            HomeViewModel.markFileAsOpened(fileURL)
+            onTap()
+        }
+        .contextMenu {
+            Button {
+                showColorPicker = true
+            } label: {
+                Label("Change Color", systemImage: "paintpalette")
+            }
+            
+            Button {
+                onRename()
+            } label: {
+                Label("Rename", systemImage: "pencil")
+            }
+            
+            Button(role: .destructive) {
+                onDelete()
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+        .sheet(isPresented: $showColorPicker) {
+            ColorPickerSheet(selectedColor: $cardColor)
+        }
+        .onAppear {
+            loadPreview()
+            loadSavedColor()
+        }
+        .onChange(of: cardColor) { _ in
+            saveColor()
+        }
+    }
+    
+    func loadPreview() {
+        do {
+            let text = try String(contentsOf: fileURL, encoding: .utf8)
+            content = text
+        } catch {
+            content = ""
+        }
+    }
+    
+    func saveColor() {
+        let key = "fileColor_\(fileURL.lastPathComponent)"
+        if let colorData = try? NSKeyedArchiver.archivedData(withRootObject: UIColor(cardColor), requiringSecureCoding: false) {
+            UserDefaults.standard.set(colorData, forKey: key)
+        }
+    }
+    
+    func loadSavedColor() {
+        let key = "fileColor_\(fileURL.lastPathComponent)"
+        if let colorData = UserDefaults.standard.data(forKey: key),
+           let uiColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: UIColor.self, from: colorData) {
+            cardColor = Color(uiColor)
+        }
+    }
+}
+
+// MARK: - Color Picker Sheet
+struct ColorPickerSheet: View {
+    @Binding var selectedColor: Color
+    @Environment(\.dismiss) var dismiss
+    
+    let presetColors: [Color] = [
+        Color(hex: "6C93A3"), // Default blue
+        Color(hex: "A3C993"), // Green
+        Color(hex: "E8B4A3"), // Peach
+        Color(hex: "B4A3D6"), // Purple
+        Color(hex: "F4C2C2"), // Pink
+        Color(hex: "FFD93D"), // Yellow
+        Color(hex: "6BCB77"), // Light green
+        Color(hex: "FF6B6B"), // Red
+        Color(hex: "4ECDC4"), // Teal
+        Color(hex: "95E1D3"), // Mint
+    ]
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                Text("Choose a color for your file card")
+                    .font(.headline)
+                    .padding(.top)
+                
+                // Preset colors grid
+                LazyVGrid(columns: [
+                    GridItem(.flexible()),
+                    GridItem(.flexible()),
+                    GridItem(.flexible()),
+                    GridItem(.flexible()),
+                    GridItem(.flexible())
+                ], spacing: 16) {
+                    ForEach(presetColors, id: \.self) { color in
+                        Circle()
+                            .fill(color)
+                            .frame(width: 50, height: 50)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.black.opacity(0.2), lineWidth: selectedColor == color ? 3 : 0)
+                            )
+                            .onTapGesture {
+                                selectedColor = color
+                            }
+                    }
+                }
+                .padding()
+                
+                Divider()
+                
+                // Custom color picker
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Custom Color")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                    
+                    ColorPicker("", selection: $selectedColor)
+                        .labelsHidden()
+                }
+                .padding()
+                
+                Spacer()
+                
+                Button("Done") {
+                    dismiss()
+                }
+                .font(.headline)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color(hex: "17374F"))
+                .cornerRadius(12)
+                .padding()
+            }
+            .navigationTitle("Card Color")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+}
+
+// MARK: - File Detail View
 struct FileDetailView: View {
     let fileURL: URL
     @State private var content: String = ""
@@ -185,7 +453,6 @@ struct FileDetailView: View {
     @State private var errorMessage: String?
     @EnvironmentObject var settings: SettingsViewModel
     
-    // Colors from ColorSettingsView
     private let backgrounds: [Color] = [
         Color.white,
         Color(red: 0.97, green: 0.95, blue: 0.93),
@@ -210,7 +477,6 @@ struct FileDetailView: View {
     
     var body: some View {
         ZStack {
-            // Apply background color from settings
             (backgrounds[safe: settings.backgroundColorIndex] ?? Color.white)
                 .ignoresSafeArea()
             
@@ -228,11 +494,6 @@ struct FileDetailView: View {
                         .foregroundColor(.gray)
                         .multilineTextAlignment(.center)
                         .padding()
-                    
-                    Text("File path: \(fileURL.path)")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                        .padding()
                 }
                 .padding()
             } else if content.isEmpty {
@@ -247,7 +508,6 @@ struct FileDetailView: View {
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        // Display the text with all settings applied
                         if settings.isBionic,
                            let attributed = try? AttributedString(markdown: settings.formatted(content)) {
                             Text(attributed)
@@ -280,32 +540,25 @@ struct FileDetailView: View {
         isLoading = true
         errorMessage = nil
         
-        // Check if file exists
         let fileExists = FileManager.default.fileExists(atPath: fileURL.path)
-        print("📁 File exists: \(fileExists)")
-        print("📁 File path: \(fileURL.path)")
         
         if !fileExists {
-            errorMessage = "File does not exist at path"
+            errorMessage = "File does not exist"
             isLoading = false
             return
         }
         
         do {
             content = try String(contentsOf: fileURL, encoding: .utf8)
-            print("✅ Successfully loaded file: \(fileURL.lastPathComponent)")
-            print("📄 Content length: \(content.count) characters")
-            print("📄 First 100 chars: \(content.prefix(100))")
             isLoading = false
         } catch {
             errorMessage = error.localizedDescription
-            print("❌ Failed to load file: \(error)")
             isLoading = false
         }
     }
 }
 
-// Safe array indexing
+// MARK: - Extensions
 private extension Array {
     subscript(safe index: Int) -> Element? {
         indices.contains(index) ? self[index] : nil
@@ -322,15 +575,5 @@ extension Color {
         let g = Double((rgb >> 8) & 0xFF) / 255
         let b = Double(rgb & 0xFF) / 255
         self.init(red: r, green: g, blue: b)
-    }
-}
-
-// Button style for file items
-struct FileButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
-            .opacity(configuration.isPressed ? 0.8 : 1.0)
-            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
     }
 }
