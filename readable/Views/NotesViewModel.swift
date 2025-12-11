@@ -19,7 +19,7 @@ class NotesViewModel: ObservableObject {
         }
     }
     
-    private let storageKey = "notes_storage_v1"
+    private let storageKey = "notes_storage_v2"
     
     init() {
         loadNotes()

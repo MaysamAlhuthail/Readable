@@ -11,6 +11,7 @@ import SwiftUI
 
 struct NoteDetailView: View {
     @Binding var note: Note
+    @EnvironmentObject var settings: SettingsViewModel
     @Environment(\.dismiss) private var dismiss
     @FocusState private var isTextFocused: Bool
 
@@ -21,11 +22,34 @@ struct NoteDetailView: View {
             VStack(spacing: 0) {
                 header
                 
-                TextEditor(text: $note.content)
-                    .focused($isTextFocused)
-                    .padding(.horizontal, 16)
-                    .scrollContentBackground(.hidden)
-                    .background(Color("background"))
+                ZStack(alignment: .topLeading) {
+                    TextEditor(text: $note.content)
+                        .font(.custom(settings.fonts[settings.fontIndex],
+                                      size: settings.fontSize))
+                        .kerning(settings.wordSpacing)
+                        .lineSpacing(settings.lineSpacing)
+                        .focused($isTextFocused)
+                        .padding(.horizontal, 16)
+                        .scrollContentBackground(.hidden)
+                        .background(Color("background"))
+                        .opacity(settings.isBionic ? 0.02 : 1)
+                    
+                    if settings.isBionic,
+                       let attributed = try? AttributedString(
+                            markdown: settings.formatted(note.content)
+                       ) {
+                        ScrollView {
+                            Text(attributed)
+                                .font(.custom(settings.fonts[settings.fontIndex],
+                                              size: settings.fontSize))
+                                .kerning(settings.wordSpacing)
+                                .lineSpacing(settings.lineSpacing)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 8)
+                        }
+                        .allowsHitTesting(false)
+                    }
+                }
             }
         }
         .onAppear {
@@ -78,4 +102,5 @@ struct NoteDetailView: View {
             Note(title: "Note name", content: "Sample content")
         )
     )
+    .environmentObject(SettingsViewModel())
 }

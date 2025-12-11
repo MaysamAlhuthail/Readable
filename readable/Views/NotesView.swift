@@ -5,7 +5,6 @@
 //  Created by Ghala Alsalem on 11/12/2025.
 //
 
-
 import SwiftUI
 
 struct NotesView: View {
@@ -33,27 +32,40 @@ struct NotesView: View {
                     searchBar
 
                     ScrollView {
-                        LazyVGrid(columns: columns, spacing: 20) {
-                            ForEach(viewModel.filteredNotes) { note in
-                                if let binding = binding(for: note) {
-                                    NavigationLink {
-                                        NoteDetailView(note: binding)
-                                    } label: {
-                                        NoteCard(note: note)
-                                    }
-                                    .contextMenu {
-                                        Button("Change color") {
-                                            colorSheetNote = note
-                                            colorSheetColor = note.color
-                                            isColorSheetPresented = true
+                        if viewModel.filteredNotes.isEmpty {
+                            VStack(spacing: 8) {
+                                Text("No notes yet")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(Color("dblue"))
+                                Text("Tap the plus button to create your first note.")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.gray)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                            .padding(.top, 40)
+                        } else {
+                            LazyVGrid(columns: columns, spacing: 20) {
+                                ForEach(viewModel.filteredNotes) { note in
+                                    if let binding = binding(for: note) {
+                                        NavigationLink {
+                                            NoteDetailView(note: binding)
+                                        } label: {
+                                            NoteCard(note: note)
                                         }
-                                        Button("Rename") {
-                                            pendingNameAction = .rename(note)
-                                            nameText = note.title
-                                            isNamingAlertPresented = true
-                                        }
-                                        Button("Delete", role: .destructive) {
-                                            viewModel.delete(note)
+                                        .contextMenu {
+                                            Button("Change color") {
+                                                colorSheetNote = note
+                                                colorSheetColor = note.color
+                                                isColorSheetPresented = true
+                                            }
+                                            Button("Rename") {
+                                                pendingNameAction = .rename(note)
+                                                nameText = note.title
+                                                isNamingAlertPresented = true
+                                            }
+                                            Button("Delete", role: .destructive) {
+                                                viewModel.delete(note)
+                                            }
                                         }
                                     }
                                 }
@@ -65,7 +77,7 @@ struct NotesView: View {
                 .padding(.top, 24)
             }
             .sheet(isPresented: $isColorSheetPresented) {
-                ColorPickerSheet(selectedColor: $colorSheetColor)
+                NoteColorPickerSheet(selectedColor: $colorSheetColor)
                     .onDisappear {
                         if let note = colorSheetNote {
                             viewModel.updateColor(note, to: colorSheetColor)
@@ -156,6 +168,7 @@ struct NotesView: View {
 
 struct NoteCard: View {
     let note: Note
+    @EnvironmentObject var settings: SettingsViewModel
     
     var body: some View {
         ZStack {
@@ -167,15 +180,12 @@ struct NoteCard: View {
                     .fill(Color("background"))
                     .frame(height: 150)
                     .overlay(
-                        Text(previewText)
-                            .font(.system(size: 13))
-                            .foregroundColor(.gray)
+                        previewTextView
                             .padding(.horizontal, 10)
-                            .multilineTextAlignment(.leading)
                     )
                 
                 Text(note.title)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.custom(settings.fonts[settings.fontIndex], size: 18))
                     .foregroundColor(.black.opacity(0.85))
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -183,6 +193,24 @@ struct NoteCard: View {
             .padding(16)
         }
         .frame(height: 230)
+    }
+    
+    @ViewBuilder
+    private var previewTextView: some View {
+        let text = previewText
+        
+        if settings.isBionic,
+           let attributed = try? AttributedString(markdown: settings.formatted(text)) {
+            Text(attributed)
+                .font(.custom(settings.fonts[settings.fontIndex], size: 13))
+                .foregroundColor(.gray)
+                .multilineTextAlignment(.leading)
+        } else {
+            Text(text)
+                .font(.custom(settings.fonts[settings.fontIndex], size: 13))
+                .foregroundColor(.gray)
+                .multilineTextAlignment(.leading)
+        }
     }
     
     private var previewText: String {
@@ -197,7 +225,8 @@ struct NoteCard: View {
     }
 }
 
-struct ColorPickerSheet: View {
+
+struct NoteColorPickerSheet: View {
     @Binding var selectedColor: Color
     @Environment(\.dismiss) var dismiss
     
