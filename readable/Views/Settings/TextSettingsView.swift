@@ -36,7 +36,6 @@ struct TextSettingsView: View {
                         .padding()
                         .animation(.easeInOut, value: settings.fontIndex)
                 }
-                // 👆 باقي الإعدادات نفسها ما تغيّرت
                 
                 // MARK: - Font Picker Arrows
                 HStack {
@@ -77,20 +76,20 @@ struct TextSettingsView: View {
             
             // MARK: - Controls Section
             VStack(alignment: .leading, spacing: 20) {
-                SettingRow(title: "Size",
-                           value: $settings.fontSize,
-                           step: 1,
-                           range: 10...40)
+                SettingRowWithValue(title: "Size",
+                                   value: $settings.fontSize,
+                                   step: 1,
+                                   range: 10...72)
                 
-                SettingRow(title: "Word Spacing",
-                           value: $settings.wordSpacing,
-                           step: 1,
-                           range: 0...10)
+                SettingRowWithValue(title: "Word Spacing",
+                                   value: $settings.wordSpacing,
+                                   step: 1,
+                                   range: 0...10)
                 
-                SettingRow(title: "Line Spacing",
-                           value: $settings.lineSpacing,
-                           step: 1,
-                           range: 0...30)
+                SettingRowWithValue(title: "Line Spacing",
+                                   value: $settings.lineSpacing,
+                                   step: 1,
+                                   range: 0...30)
                 
                 HStack {
                     Text("Bionic")
@@ -114,5 +113,51 @@ struct TextSettingsView: View {
         This is a text sample to try different fonts, sizes, word spacing, line spacing and even bionic font to get the most comfortable with our app!
         """
         return settings.formatted(text)
+    }
+}
+
+// MARK: - SettingRow الجديد مع عرض القيمة
+struct SettingRowWithValue: View {
+    let title: String
+    @Binding var value: CGFloat
+    let step: CGFloat
+    let range: ClosedRange<CGFloat>
+    
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(Color.dbroun)
+            
+            Spacer()
+            
+            // زر الناقص
+            Button {
+                if value > range.lowerBound {
+                    value -= step
+                }
+            } label: {
+                Image(systemName: "minus")
+                    .foregroundColor(Color.dblue)
+                    .frame(width: 30, height: 30)
+            }
+            
+            // عرض القيمة الحالية
+            Text("\(Int(value))")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(Color.dbroun)
+                .frame(minWidth: 40)
+            
+            // زر الزائد
+            Button {
+                if value < range.upperBound {
+                    value += step
+                }
+            } label: {
+                Image(systemName: "plus")
+                    .foregroundColor(Color.dblue)
+                    .frame(width: 30, height: 30)
+            }
+        }
     }
 }

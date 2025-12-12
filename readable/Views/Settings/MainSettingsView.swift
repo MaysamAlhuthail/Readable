@@ -86,10 +86,10 @@ struct MainSettingsView: View {
 }
 
 //struct MainSettingsView_Previews: PreviewProvider {
-//    static var previews: some View {
-//        NavigationStack {
-//            MainSettingsView()
-//                .environmentObject(SettingsViewModel())
-//        }
-//    }
+// static var previews: some View {
+//  NavigationStack {
+//      MainSettingsView()
+//          .environmentObject(SettingsViewModel())
+//  }
+// }
 //}
