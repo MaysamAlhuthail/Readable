@@ -4,17 +4,14 @@
 //
 //  Created by Aseel Basalama on 02/12/2025.
 //
-
 import SwiftUI
 
-// MARK: - App Colors
 extension Color {
-    static let appBackground = Color(hex: "FAEDE3") // background
-    static let appBlue       = Color(hex: "6C93A3") // border / cards
-    static let appNavy       = Color(hex: "17374F") // text / icons
+    static let appBackground = Color(hex: "FAEDE3")
+    static let appBlue = Color(hex: "6C93A3")
+    static let appNavy = Color(hex: "17374F")
 }
 
-// MARK: - MODEL
 struct DocumentItem: Identifiable {
     let id = UUID()
     let fileURL: URL
@@ -22,9 +19,9 @@ struct DocumentItem: Identifiable {
     let snippet: String
     let isNote: Bool
     let lastOpened: Date
+    let color: Color
 }
 
-// MARK: - VIEW MODEL
 final class HomeViewModel: ObservableObject {
     @Published var searchText: String = ""
     @Published private(set) var files: [DocumentItem] = []
@@ -45,74 +42,82 @@ final class HomeViewModel: ObservableObject {
                 options: []
             ).filter { $0.pathExtension == "txt" }
             
-            // Get recently opened files from UserDefaults
             let recentlyOpened = getRecentlyOpenedFiles()
-            
-            // Create document items with last opened dates
             var documentItems: [DocumentItem] = []
             
             for fileURL in fileURLs {
                 let title = fileURL.deletingPathExtension().lastPathComponent
                 let content = (try? String(contentsOf: fileURL, encoding: .utf8)) ?? ""
                 let snippet = String(content.prefix(100))
-                
-                // Get last opened date or use a very old date if never opened
                 let lastOpened = recentlyOpened[fileURL.path] ?? Date(timeIntervalSince1970: 0)
                 
-                let item = DocumentItem(
-                    fileURL: fileURL,
-                    title: title,
-                    snippet: snippet,
-                    isNote: false,
-                    lastOpened: lastOpened
+                documentItems.append(
+                    DocumentItem(
+                        fileURL: fileURL,
+                        title: title,
+                        snippet: snippet,
+                        isNote: false,
+                        lastOpened: lastOpened,
+                        color: .appBlue
+                    )
                 )
-                
-                documentItems.append(item)
             }
             
-            // Sort by last opened (most recent first) and take top 3
             files = documentItems
                 .sorted { $0.lastOpened > $1.lastOpened }
                 .prefix(3)
                 .map { $0 }
             
         } catch {
-            print("Error loading files: \(error)")
             files = []
         }
     }
     
     func loadRecentNotes() {
-        // For now, keeping the sample notes
-        // You can implement similar logic for notes later
-        let noteSnippet = "Groceries, school assignments, and meetings. Water plants, Clean Bedroom, Laundry..."
+        let storageKey = "notes_storage_v2"
         
-        notes = [
-            DocumentItem(
-                fileURL: URL(fileURLWithPath: ""),
-                title: "Oct to do list",
-                snippet: noteSnippet,
-                isNote: true,
-                lastOpened: Date()
-            ),
-            DocumentItem(
-                fileURL: URL(fileURLWithPath: ""),
-                title: "Nov to do list",
-                snippet: noteSnippet,
-                isNote: true,
-                lastOpened: Date()
-            ),
-            DocumentItem(
-                fileURL: URL(fileURLWithPath: ""),
-                title: "Dec to do list",
-                snippet: noteSnippet,
-                isNote: true,
-                lastOpened: Date()
-            )
-        ]
+        struct StoredNote: Codable {
+            let id: UUID
+            let title: String
+            let content: String
+            let r: Double
+            let g: Double
+            let b: Double
+            let a: Double
+            let updatedAt: Date
+        }
+        
+        guard let data = UserDefaults.standard.data(forKey: storageKey),
+              let stored = try? JSONDecoder().decode([StoredNote].self, from: data) else {
+            notes = []
+            return
+        }
+        
+        notes = stored
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .prefix(3)
+            .map { s in
+                let noteColor = Color(
+                    .sRGB,
+                    red: s.r,
+                    green: s.g,
+                    blue: s.b,
+                    opacity: s.a
+                )
+                
+                let snippet = s.content.isEmpty ? "" : String(s.content.prefix(100))
+                
+                return DocumentItem(
+                    fileURL: URL(fileURLWithPath: ""),
+                    title: s.title,
+                    snippet: snippet,
+                    isNote: true,
+                    lastOpened: s.updatedAt,
+                    color: noteColor
+                )
+            }
     }
     
-    // Helper function to get recently opened files from UserDefaults
     private func getRecentlyOpenedFiles() -> [String: Date] {
         guard let data = UserDefaults.standard.data(forKey: "recentlyOpenedFiles"),
               let dict = try? JSONDecoder().decode([String: TimeInterval].self, from: data) else {
@@ -122,7 +127,6 @@ final class HomeViewModel: ObservableObject {
         return dict.mapValues { Date(timeIntervalSince1970: $0) }
     }
     
-    // Function to mark a file as opened (call this when user opens a file)
     static func markFileAsOpened(_ fileURL: URL) {
         var recentFiles = UserDefaults.standard.data(forKey: "recentlyOpenedFiles")
             .flatMap { try? JSONDecoder().decode([String: TimeInterval].self, from: $0) } ?? [:]
@@ -145,9 +149,7 @@ final class HomeViewModel: ObservableObject {
     }
 }
 
-// MARK: - MAIN VIEW
 struct HomePage: View {
-
     @StateObject private var viewModel = HomeViewModel()
 
     var body: some View {
@@ -166,15 +168,21 @@ struct HomePage: View {
                         SectionHeader(title: "Files")
                     }
                     .buttonStyle(.plain)
-                    HorizontalCardList(items: viewModel.filteredFiles)
+                    
+                    if !viewModel.filteredFiles.isEmpty {
+                        HorizontalCardList(items: viewModel.filteredFiles)
+                    }
 
-                    NavigationLink{
-                        NotesView()}
-                    label:{
+                    NavigationLink {
+                        NotesView()
+                    } label: {
                         SectionHeader(title: "Notes")
-                    } .buttonStyle(.plain)
-
-                    HorizontalCardList(items: viewModel.filteredNotes)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    if !viewModel.filteredNotes.isEmpty {
+                        HorizontalCardList(items: viewModel.filteredNotes)
+                    }
 
                     Spacer(minLength: 20)
                 }
@@ -184,19 +192,17 @@ struct HomePage: View {
         }
         .navigationBarBackButtonHidden(true)
         .onAppear {
-            // Refresh files when view appears
             viewModel.loadRecentFiles()
+            viewModel.loadRecentNotes()
         }
     }
 }
 
-// MARK: - Search Bar
 struct SearchBar: View {
     @Binding var text: String
     
     var body: some View {
         HStack(spacing: 12) {
-
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 20))
                 .foregroundColor(Color("Gray"))
@@ -218,7 +224,6 @@ struct SearchBar: View {
     }
 }
 
-// MARK: - Section Header
 struct SectionHeader: View {
     let title: String
 
@@ -237,7 +242,6 @@ struct SectionHeader: View {
     }
 }
 
-// MARK: - Horizontal Card List
 struct HorizontalCardList: View {
     let items: [DocumentItem]
 
@@ -246,20 +250,10 @@ struct HorizontalCardList: View {
             HStack(spacing: 20) {
                 ForEach(items) { item in
                     if item.isNote {
-                        FileCard(
-                            title: item.title,
-                            snippet: item.snippet,
-                            isNote: item.isNote
-                        )
+                        FileCard(title: item.title, snippet: item.snippet, isNote: item.isNote, color: item.color)
                     } else {
-                        NavigationLink(destination:
-                            FileDetailViewFromHome(fileURL: item.fileURL)
-                        ) {
-                            FileCard(
-                                title: item.title,
-                                snippet: item.snippet,
-                                isNote: item.isNote
-                            )
+                        NavigationLink(destination: FileDetailViewFromHome(fileURL: item.fileURL)) {
+                            FileCard(title: item.title, snippet: item.snippet, isNote: item.isNote, color: item.color)
                         }
                         .buttonStyle(.plain)
                     }
@@ -269,22 +263,21 @@ struct HorizontalCardList: View {
     }
 }
 
-// MARK: - File Card
 struct FileCard: View {
     let title: String
     let snippet: String
     let isNote: Bool
+    let color: Color
 
-    private let cardWidth: CGFloat  = 140
+    private let cardWidth: CGFloat = 140
     private let cardHeight: CGFloat = 190
     private let footerHeight: CGFloat = 30
     private let borderInset: CGFloat = 7
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-
             RoundedRectangle(cornerRadius: 24)
-                .fill(Color.appBlue)
+                .fill(color)
                 .frame(width: cardWidth, height: cardHeight)
 
             RoundedRectangle(cornerRadius: 18)
@@ -306,7 +299,7 @@ struct FileCard: View {
             VStack {
                 Spacer()
                 ZStack(alignment: .leading) {
-                    Rectangle().fill(Color.appBlue)
+                    Rectangle().fill(color)
                     Text(title)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.appNavy)
@@ -320,7 +313,7 @@ struct FileCard: View {
             .frame(width: cardWidth, height: cardHeight)
 
             RoundedRectangle(cornerRadius: 10)
-                .fill(Color.appBlue)
+                .fill(color)
                 .frame(width: 40, height: 40)
                 .overlay(
                     Image(systemName: isNote ? "list.bullet.rectangle" : "doc.text")
@@ -334,7 +327,6 @@ struct FileCard: View {
     }
 }
 
-// MARK: - File Detail View (from HomePage - marks file as opened)
 struct FileDetailViewFromHome: View {
     let fileURL: URL
     @State private var content: String = ""
@@ -422,7 +414,6 @@ struct FileDetailViewFromHome: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             loadFileContent()
-            // Mark this file as recently opened
             HomeViewModel.markFileAsOpened(fileURL)
         }
     }
@@ -449,14 +440,12 @@ struct FileDetailViewFromHome: View {
     }
 }
 
-// Safe array indexing
 private extension Array {
     subscript(safe index: Int) -> Element? {
         indices.contains(index) ? self[index] : nil
     }
 }
 
-// MARK: - Preview
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         HomePage()
