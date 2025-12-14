@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct MainSettingsView: View {
-
     @EnvironmentObject var settings: SettingsViewModel
     @State private var selectedTab = 0
     @State private var goToHome = false
@@ -17,12 +16,10 @@ struct MainSettingsView: View {
 
     var body: some View {
         ZStack {
-            // Using a named color asset "background" (fallback to system background if you prefer)
             Color("background")
                 .ignoresSafeArea()
 
             VStack {
-                // MARK: - Segmented Tabs
                 HStack(spacing: 0) {
                     Text("Text")
                         .frame(maxWidth: .infinity)
@@ -45,7 +42,6 @@ struct MainSettingsView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 15))
                 .padding(.horizontal)
 
-                // MARK: - Content
                 if selectedTab == 0 {
                     TextSettingsView()
                 } else {
@@ -54,19 +50,17 @@ struct MainSettingsView: View {
 
                 Spacer()
 
-                // Bottom button
                 Button {
-                                    if selectedTab == 0 {
-                                        // Go to Colors tab
-                                        selectedTab = 1
-                                    } else {
-                                        // Go to HomePage
-                                        if isSheet == false {
-                                            goToHome = true
-                                        }
-                                        else{ dismiss()}
-                                    }
-                                } label: {
+                    if selectedTab == 0 {
+                        selectedTab = 1
+                    } else {
+                        if isSheet == false {
+                            goToHome = true
+                        } else {
+                            dismiss()
+                        }
+                    }
+                } label: {
                     Text(selectedTab == 0 ? "Next" : "Done")
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(.white)
@@ -81,15 +75,7 @@ struct MainSettingsView: View {
         }
         .navigationDestination(isPresented: $goToHome) {
             HomePage()
+                .environmentObject(settings)
         }
     }
 }
-
-//struct MainSettingsView_Previews: PreviewProvider {
-// static var previews: some View {
-//  NavigationStack {
-//      MainSettingsView()
-//          .environmentObject(SettingsViewModel())
-//  }
-// }
-//}

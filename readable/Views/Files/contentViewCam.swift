@@ -69,7 +69,6 @@ struct ContentViewCam: View {
         VStack {
             HStack {
                 Picker("Scan Type", selection: $vm.scanType) {
-                    Text("Barcode").tag(ScanType.barcode)
                     Text("Text").tag(ScanType.text)
                 }
                 .pickerStyle(.segmented)

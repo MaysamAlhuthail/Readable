@@ -9,15 +9,13 @@ import SwiftUI
 
 @main
 struct readable_App: App {
-    
-    @StateObject var settings = SettingsViewModel()
-    @StateObject var vm = AppViewModel()
+    @StateObject private var settings = SettingsViewModel()
+    @StateObject private var vm = AppViewModel()
     @State private var isSheet = false
-    
+
     var body: some Scene {
         WindowGroup {
             NavigationStack {
-                //
                 SplashView(isSheet: $isSheet)
             }
             .environmentObject(settings)
@@ -26,3 +24,4 @@ struct readable_App: App {
         }
     }
 }
+
